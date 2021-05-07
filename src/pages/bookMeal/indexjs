@@ -1,0 +1,286 @@
+import React, { useEffect, useState } from "react";
+import { Button, Container, Form, Row, Col } from "react-bootstrap";
+import { useHistory } from "react-router";
+import firebase from "../../services/firebaseConfig";
+
+const BookMeal = () => {
+  const history = useHistory();
+
+  const [canBook, setcanBook] = useState(false);
+
+  const [name, setname] = useState("");
+  const [address1, setaddress1] = useState("");
+  const [address2, setaddress2] = useState("");
+  const [phone, setphone] = useState(0);
+
+  const [lunch, setlunch] = useState(true);
+  const [dinner, setdinner] = useState(false);
+  const [quantity, setquantity] = useState(1);
+  const [remark, setremark] = useState("");
+
+  const [nameValid, setnameValid] = useState(false);
+  const [address1Valid, setaddress1Valid] = useState(false);
+  const [address2Valid, setaddress2Valid] = useState(false);
+  const [phoneValid, setphoneValid] = useState(false);
+
+  const [quantityValid, setquantityValid] = useState(false);
+
+  useEffect(() => {
+    // console.log(new Date().getHours() > 14 && new Date().getHours() < 24);
+    firebase.auth().onAuthStateChanged(function (user) {
+      if (user) {
+        if (new Date().getHours() > 14 && new Date().getHours() < 24) {
+          setcanBook(true);
+          getUserAPI();
+        }
+      } else {
+      }
+    });
+  }, []);
+
+  const getUserAPI = () => {
+    const db = firebase.firestore();
+    db.collection("users")
+      .doc(firebase.auth().currentUser.uid)
+      .get()
+      .then((result) => {
+        if (result.data()) {
+          console.log(result.data());
+          setname(result.data().name);
+          setaddress1(result.data().house);
+          setaddress2(result.data().street);
+          setphone(result.data().phone);
+        }
+      })
+      .catch((error) => {
+        console.log("error ", error.message);
+      });
+  };
+
+  const setMealAPI = () => {
+    const db = firebase.firestore();
+    db.collection("mealRequests")
+      .doc()
+      .set({
+        userid: firebase.auth().currentUser.uid,
+        dinner: dinner,
+        lunch: lunch,
+        quantity: quantity,
+        remark: remark,
+        timestamp: firebase.firestore.Timestamp.fromDate(new Date()),
+      })
+      .then((result) => {
+        history.push("/mymeal");
+        console.log(result.data());
+      })
+      .catch((error) => {
+        console.log("error ", error.message);
+      });
+  };
+  const setUserAPI = () => {
+    const db = firebase.firestore();
+    db.collection("users")
+      .doc(firebase.auth().currentUser.uid)
+      .set({
+        name: name,
+        phone: phone,
+        house: address1,
+        street: address2,
+      })
+      .then((result) => {
+        console.log(result.data());
+      })
+      .catch((error) => {
+        console.log("error ", error.message);
+      });
+  };
+
+  const submitRequest = () => {
+    var valid = true;
+    if (name.length < 4) {
+      valid = false;
+      setnameValid(true);
+    } else setnameValid(false);
+
+    if (phone.length < 10) {
+      valid = false;
+      setphoneValid(true);
+    } else setphoneValid(false);
+
+    if (address1.length < 4) {
+      valid = false;
+      setaddress1Valid(true);
+    } else setaddress1Valid(false);
+
+    if (address2.length < 4) {
+      valid = false;
+      setaddress2Valid(true);
+    } else setaddress2Valid(false);
+
+    if (quantity < 1) {
+      valid = false;
+      setquantityValid(true);
+    } else setquantityValid(false);
+
+    if (valid) {
+      setMealAPI();
+      setUserAPI();
+    }
+  };
+
+  const mealHandler = (event) => {
+    if (event.target.id === "lunch") {
+      setlunch(true);
+      setdinner(false);
+    }
+    if (event.target.id === "dinner") {
+      setlunch(false);
+      setdinner(true);
+    }
+    if (event.target.id === "both") {
+      setlunch(true);
+      setdinner(true);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: 50, marginBottom: 64, padding: 12 }}>
+      <Container
+        style={{
+          background: "#93d243",
+          boxShadow: "1px 1px 1px",
+          borderRadius: 6,
+          paddingLeft: 12,
+          paddingRight: 12,
+          paddingBottom: 24,
+          paddingTop: 24,
+          maxWidth: 700,
+        }}
+      >
+        {canBook ? (
+          <Form>
+            <Form.Group style={{ marginTop: 24 }} controlId="formBasicName">
+              <Form.Label style={{ marginLeft: 6 }}>Name</Form.Label>
+              <Form.Control
+                type="text"
+                value={name}
+                onChange={(val) => setname(val.target.value)}
+                placeholder="Name"
+                isInvalid={nameValid}
+              />
+              <Form.Control.Feedback type="invalid">
+                Please enter valid name.
+              </Form.Control.Feedback>
+            </Form.Group>
+
+            <Form.Group controlId="formBasicPhone">
+              <Form.Label style={{ marginLeft: 6 }}>Phone Number</Form.Label>
+              <Form.Control
+                type="text"
+                value={phone}
+                onChange={(val) => setphone(val.target.value)}
+                placeholder="+919999999999"
+                isInvalid={phoneValid}
+              />
+            </Form.Group>
+            <Form.Group style={{ marginTop: 24 }} controlId="formBasicAddress1">
+              <Form.Label style={{ marginLeft: 6 }}>Address 1</Form.Label>
+              <Form.Control
+                type="text"
+                value={address1}
+                onChange={(val) => setaddress1(val.target.value)}
+                placeholder="House no."
+                isInvalid={address1Valid}
+              />
+            </Form.Group>
+
+            <Form.Group style={{ marginTop: 24 }} controlId="formBasicAddress2">
+              <Form.Label style={{ marginLeft: 6 }}>Address 2</Form.Label>
+              <Form.Control
+                type="text"
+                value={address2}
+                onChange={(val) => setaddress2(val.target.value)}
+                placeholder="Sector"
+                isInvalid={address2Valid}
+              />
+              <Form.Text style={{ marginLeft: 6 }} className="text">
+                Include sector
+              </Form.Text>
+            </Form.Group>
+
+            <fieldset>
+              <Form.Group style={{ marginLeft: 6, marginTop: 6 }} as={Row}>
+                <Form.Label as="legend" column sm={2}>
+                  Meals
+                </Form.Label>
+                <Col sm={10}>
+                  <Form.Check
+                    type="radio"
+                    label="Lunch"
+                    name="formHorizontalRadios"
+                    id="lunch"
+                    defaultChecked
+                    onChange={mealHandler}
+                  />
+                  <Form.Check
+                    type="radio"
+                    label="Dinner"
+                    name="formHorizontalRadios"
+                    id="dinner"
+                    onChange={mealHandler}
+                  />
+                  <Form.Check
+                    type="radio"
+                    label="Both"
+                    name="formHorizontalRadios"
+                    id="both"
+                    onChange={mealHandler}
+                  />
+                </Col>
+              </Form.Group>
+            </fieldset>
+
+            <Form.Group style={{ marginTop: 24 }} controlId="formBasicQuantity">
+              <Form.Label style={{ marginLeft: 6 }}>Quantity</Form.Label>
+              <Form.Control
+                type="number"
+                value={quantity}
+                onChange={(val) => setquantity(val.target.value)}
+                placeholder="Quantity"
+                isInvalid={quantityValid}
+              />
+              <Form.Control.Feedback type="invalid">
+                Please enter more than one
+              </Form.Control.Feedback>
+            </Form.Group>
+
+            <Form.Group style={{ marginTop: 24 }} controlId="formBasicRemark">
+              <Form.Label style={{ marginLeft: 6 }}>Remark</Form.Label>
+              <Form.Control
+                as="textarea"
+                onChange={(val) => setremark(val.target.value)}
+                rows={3}
+              />
+            </Form.Group>
+
+            <Button
+              style={{ marginTop: 24 }}
+              variant="primary"
+              onClick={submitRequest}
+            >
+              Submit
+            </Button>
+          </Form>
+        ) : (
+          <div>
+            <div>Order Timing:</div>
+            <div>3:00PM to 11:00pm</div>
+            <div>Order must be placed 1 day before delivery date</div>
+          </div>
+        )}
+      </Container>
+    </div>
+  );
+};
+
+export default BookMeal;

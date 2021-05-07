@@ -1,0 +1,57 @@
+import GoogleMapReact from "google-map-react";
+import { useRef, useState } from "react";
+import { GiPositionMarker } from "react-icons/gi";
+
+const mapApiKey = "AIzaSyDtpv2lBK1Gx0MYNqwuo4V6_BO3oNXwPJA";
+const LocationPin = () => (
+  <div style={{ width: "3rem", height: "3rem" }}>
+    <GiPositionMarker
+      style={{
+        position: "absolute",
+        top: "-3rem",
+        left: "-1.5rem",
+        color: "green",
+        fontSize: "3rem",
+      }}
+    />
+  </div>
+);
+export const Map = ({ location, zoomLevel, dropHandler }) => {
+  const loc = {
+    lat: location.lat,
+    lng: location.lng,
+  };
+
+  const refMap = useRef(null);
+  var pos = {
+    lat: location.lat,
+    lng: location.lng,
+  };
+
+  const handleBoundsChanged = () => {
+    const mapCenter = refMap.current.getCenter(); //get map center
+    pos = mapCenter;
+    // setCenter(mapCenter);
+  };
+
+  return (
+    <div style={{ width: "100%", height: "100%" }}>
+      <div style={{ width: "100%", height: "100%" }}>
+        <GoogleMapReact
+          yesIWantToUseGoogleMapApiInternals={false}
+          bootstrapURLKeys={{ key: mapApiKey }}
+          ref={refMap}
+          //   defaultCenter={{ lat: 28, lng: 77 }}
+          center={loc}
+          defaultZoom={16}
+          zoom={zoomLevel}
+          onDrag={() => handleBoundsChanged}
+          onDragEnd={(e) => dropHandler(e.center)}
+          draggable={true}
+        >
+          <LocationPin position={pos} />
+        </GoogleMapReact>
+      </div>
+    </div>
+  );
+};
