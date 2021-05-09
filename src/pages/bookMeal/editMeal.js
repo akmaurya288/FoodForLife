@@ -14,6 +14,7 @@ import { useHistory } from "react-router";
 import firebase from "../../services/firebaseConfig";
 import MapWithSearch from "../../components/map/mapWithSearch";
 import { SiGooglemaps } from "react-icons/si";
+import "./index.js";
 
 const EditMeal = ({ match }) => {
   const id = match.params.id;
@@ -203,9 +204,10 @@ const EditMeal = ({ match }) => {
     return (
       <Modal
         show={show}
-        size="lg"
+        size="sm"
         aria-labelledby="contained-modal-title-vcenter"
         centered
+        className="delete-modal"
       >
         <Modal.Header>
           <Modal.Title id="contained-modal-title-vcenter">
@@ -223,11 +225,26 @@ const EditMeal = ({ match }) => {
     );
   };
 
+  const MapPopUp = ({ show, onHide }) => {
+    return (
+      <Modal
+        show={show}
+        size="lg"
+        aria-labelledby="contained-modal-title-vcenter"
+        centered
+        className="map-modal"
+        onHide={onHide}
+      >
+        <MapWithSearch confirm={mapChangeHandler}></MapWithSearch>
+      </Modal>
+    );
+  };
+
   return (
     <>
-      <DeletePopup show={deletePopupShow} />
+      <DeletePopup show={deletePopupShow} onHide={() => {}} />
       <div style={{ marginTop: 25, marginBottom: 64, padding: 8 }}>
-        {isChangingAddress ? (
+        {/* {isChangingAddress ? (
           <div
             style={{
               position: "absolute",
@@ -251,7 +268,13 @@ const EditMeal = ({ match }) => {
               <MapWithSearch confirm={mapChangeHandler}></MapWithSearch>
             </Jumbotron>
           </div>
-        ) : null}
+        ) : null} */}
+        <MapPopUp
+          show={isChangingAddress}
+          onHide={() => {
+            setisChangingAddress(false);
+          }}
+        ></MapPopUp>
 
         <Container
           style={{
@@ -314,7 +337,7 @@ const EditMeal = ({ match }) => {
               </Form.Group>
 
               <Form.Label style={{ marginLeft: 6 }}>
-                Google Map location
+                Google Map (Set Location nearest to your home)
               </Form.Label>
 
               <InputGroup className="mb-3">
@@ -382,7 +405,7 @@ const EditMeal = ({ match }) => {
                   isInvalid={quantityValid}
                 />
                 <Form.Control.Feedback type="invalid">
-                  Please enter more than one
+                  Please enter how many plates required
                 </Form.Control.Feedback>
               </Form.Group>
 

@@ -146,14 +146,30 @@ class MapWithSearch extends Component {
             onDrag={this.onDragHandler}
             onDragEnd={this.onDragEndHandler}
             onChange={this._onChange}
-            onClick={this._onClick}
+            // onClick={this._onClick}
             bootstrapURLKeys={{
               key: "AIzaSyDtpv2lBK1Gx0MYNqwuo4V6_BO3oNXwPJA",
               libraries: ["places", "geometry"],
             }}
             yesIWantToUseGoogleMapApiInternals
             onGoogleApiLoaded={({ map, maps }) => this.apiHasLoaded(map, maps)}
-            options={{ gestureHandling: "greedy" }}
+            options={{
+              restriction: {
+                latLngBounds: {
+                  north: 28.5,
+                  south: 28.381183,
+                  west: 76.99,
+                  east: 77.1,
+                },
+                strictBounds: false,
+              },
+              gestureHandling: "greedy",
+              mapTypeControl: true,
+              // mapTypeControlOptions: {
+              //   style: google.maps.MapTypeControlStyle.DROPDOWN_MENU,
+              //   mapTypeIds: ["roadmap", "terrain"],
+              // },
+            }}
           >
             <MarkerIcon
               text={this.state.address}
@@ -189,7 +205,7 @@ class MapWithSearch extends Component {
               )
             }
           >
-            Change Address
+            Set Address
           </Button>
         </div>
       </Wrapper>

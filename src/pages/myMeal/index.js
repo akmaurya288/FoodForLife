@@ -6,6 +6,7 @@ import firebase from "../../services/firebaseConfig";
 const MyMeal = () => {
   const history = useHistory();
   const [mealData, setmealData] = useState([]);
+  const [oldMealData, setoldMealData] = useState([]);
   const [todayMeal, settodayMeal] = useState([]);
   useEffect(() => {
     firebase.auth().onAuthStateChanged(function (user) {
@@ -24,12 +25,19 @@ const MyMeal = () => {
       .get()
       .then((result) => {
         var temp = [];
-        var tempId = [];
+        var tempOld = [];
         result.docs.forEach((element) => {
           let data = element.data();
-          temp.push({ ...data, id: element.id });
+
+          if (
+            new Date(data.timestamp.toDate()).setHours(0, 0, 0, 0) ===
+            new Date().setHours(0, 0, 0, 0)
+          )
+            temp.push({ ...data, id: element.id });
+          else tempOld.push({ ...data, id: element.id });
         });
         setmealData(temp);
+        setoldMealData(tempOld);
       })
       .catch((error) => {
         console.log("error ", error.message);
@@ -102,6 +110,7 @@ const MyMeal = () => {
       <Card
         style={{
           margin: 6,
+          marginTop: 16,
           borderRadius: 4,
           boxShadow: "1px 1px 1px 1px black",
           background: "#1f2223",
@@ -174,6 +183,7 @@ const MyMeal = () => {
       </Card>
     );
   };
+
   return (
     <div style={{ marginTop: 20, marginBottom: 64 }}>
       <div
@@ -196,6 +206,23 @@ const MyMeal = () => {
       </div>
       {mealData
         ? mealData.map((item, index) => {
+            return <CardItem key={index} item={item} index={index}></CardItem>;
+          })
+        : null}
+      {oldMealData ? (
+        <div
+          style={{
+            color: "white",
+            marginLeft: 12,
+            marginTop: 40,
+            fontWeight: "bold",
+          }}
+        >
+          Old Meal Requests
+        </div>
+      ) : null}
+      {oldMealData
+        ? oldMealData.map((item, index) => {
             return <CardItem key={index} item={item} index={index}></CardItem>;
           })
         : null}

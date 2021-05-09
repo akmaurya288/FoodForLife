@@ -1,28 +1,31 @@
-import React, { useEffect, useState } from "react";
-import { Button, Card, Spinner, Tabs, Tab } from "react-bootstrap";
+import React, { useEffect, useRef, useState } from "react";
+import { Button, Card, Spinner, Tabs, Tab, Pagination } from "react-bootstrap";
 import { useHistory } from "react-router";
 import firebase from "../../services/firebaseConfig";
 import { CSVLink } from "react-csv";
 import styled from "styled-components";
 import { getWhichMealTab, setWhichMealTab } from "../../utilities/storage";
 import "./index.css";
+import AllDataRequest from "../../components/MealRequests/AllDataRequest";
 
 const MealRequests = () => {
   const history = useHistory();
+  var height = window.innerHeight;
   const [mealData, setmealData] = useState([]);
   const [lunchData, setlunchData] = useState([]);
   const [dinnerData, setdinnerData] = useState([]);
   const [loading, setloading] = useState(true);
-  // const [allData, setallData] = useState(false);
   const [createdCSV, setcreatedCSV] = useState(false);
   const [csvData, setcsvData] = useState([]);
+  const [csvFileName, setcsvFileName] = useState("Meal_Request_List");
   const [mealTab, setmealTab] = useState(getWhichMealTab());
+  const scrollRef = useRef();
 
   useEffect(() => {
-    TodayData();
+    if (mealTab !== "all") TodayData();
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
   const TodayData = async () => {
     const db = firebase.firestore();
     var d = new Date(new Date().setDate(new Date().getDate() - 1));
@@ -67,51 +70,12 @@ const MealRequests = () => {
         setmealData(tempM);
         setlunchData(tempL);
         setdinnerData(tempD);
-        // setallData(false);
         setcreatedCSV(false);
       })
       .catch((error) => {
         console.log(error.message);
       });
   };
-
-  // const AllData = async () => {
-  //   const db = firebase.firestore();
-  //   var d = new Date(new Date().setDate(new Date().getDate() - 1));
-  //   d.setHours(0, 0, 0, 0);
-  //   db.collection("mealRequests")
-  //     .orderBy("timestamp", "desc")
-  //     .get()
-  //     .then((result) => {
-  //       var tempM = [];
-  //       result.docs.forEach((element) => {
-  //         tempM.push({
-  //           name: element.data().name,
-  //           phone: element.data().phone,
-  //           email: element.data().email ? element.data().email : "",
-  //           address: element.data().address,
-  //           address_detail: element.data().address_detail,
-  //           geopoint: element.data().geopoint,
-  //           userid: element.data().userid,
-  //           dinner: element.data().dinner,
-  //           lunch: element.data().lunch,
-  //           quantity: element.data().quantity,
-  //           remark: element.data().remark,
-  //           timestamp: element.data().timestamp,
-  //           delivered: element.data().delivered ? true : false,
-  //           onway: element.data().onway ? true : false,
-  //           id: element.id,
-  //         });
-  //       });
-  //       setloading(false);
-  //       setmealData(tempM);
-  //       setallData(true);
-  //       setcreatedCSV(false);
-  //     })
-  //     .catch((error) => {
-  //       console.log(error.message);
-  //     });
-  // };
 
   const GetDelivered = ({ delivered, onway, meal }) => {
     if (delivered)
@@ -177,6 +141,7 @@ const MealRequests = () => {
         }}
         style={{
           margin: 6,
+          marginTop: 16,
           borderRadius: 4,
           boxShadow: "1px 1px 1px 1px black",
           background: "#1f2223",
@@ -263,6 +228,7 @@ const MealRequests = () => {
     if (mealTab === "dinner") dataList = dinnerData;
     if (mealTab === "both") dataList = mealData;
 
+    setcsvFileName(mealTab + "_list_" + new Date().toDateString());
     dataList.forEach((data) => {
       var meal = "";
       if (data.lunch) meal = "Lunch";
@@ -309,7 +275,11 @@ const MealRequests = () => {
         onClick={() => setcreatedCSV(false)}
         variant="success"
       >
-        <CSVLink data={csvData} style={{ color: "white" }}>
+        <CSVLink
+          filename={csvFileName}
+          data={csvData}
+          style={{ color: "white" }}
+        >
           Download
         </CSVLink>
       </ButtonStyled>
@@ -319,7 +289,6 @@ const MealRequests = () => {
   const LunchTabCont = () => {
     return (
       <>
-        {loading ? <SpinnerCont /> : null}
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           {createdCSV && csvData.length > 0 ? (
             <CSVButtonCont />
@@ -334,6 +303,7 @@ const MealRequests = () => {
             </ButtonStyled>
           )}
         </div>
+        {loading ? <SpinnerCont /> : null}
         {lunchData
           ? lunchData.map((item, index) => {
               return (
@@ -348,7 +318,6 @@ const MealRequests = () => {
   const DinnerTabCont = () => {
     return (
       <>
-        {loading ? <SpinnerCont /> : null}
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           {createdCSV && csvData.length > 0 ? (
             <CSVButtonCont />
@@ -363,6 +332,7 @@ const MealRequests = () => {
             </ButtonStyled>
           )}
         </div>
+        {loading ? <SpinnerCont /> : null}
         {dinnerData
           ? dinnerData.map((item, index) => {
               return (
@@ -377,7 +347,6 @@ const MealRequests = () => {
   const BothTabCont = () => {
     return (
       <>
-        {loading ? <SpinnerCont /> : null}
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           {createdCSV && csvData.length > 0 ? (
             <CSVButtonCont />
@@ -392,6 +361,7 @@ const MealRequests = () => {
             </ButtonStyled>
           )}
         </div>
+        {loading ? <SpinnerCont /> : null}
         {mealData
           ? mealData.map((item, index) => {
               return (
@@ -404,7 +374,12 @@ const MealRequests = () => {
   };
 
   return (
-    <div style={{ marginTop: 10, marginBottom: 64 }}>
+    <div
+      style={{
+        height: height - 60,
+        overflow: "hidden",
+      }}
+    >
       <Tabs
         className="nav"
         id="controlled-tab-example"
@@ -423,7 +398,9 @@ const MealRequests = () => {
         <Tab eventKey="both" title="Both">
           <BothTabCont />
         </Tab>
-        <Tab eventKey="all" title="All" disabled></Tab>
+        <Tab eventKey="all" title="All">
+          <AllDataRequest></AllDataRequest>
+        </Tab>
       </Tabs>
     </div>
   );

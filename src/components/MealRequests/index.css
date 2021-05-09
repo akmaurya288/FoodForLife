@@ -1,0 +1,20 @@
+.page-item .page-link {
+  color: #afe84f;
+  background-color: #273a23;
+  border-color: #1f2223;
+  border-width: 1px;
+}
+
+.page-item.active .page-link {
+  color: #ffffff;
+  background-color: #469623;
+  border-color: #1f2223;
+  border-width: 1px;
+}
+
+.page-item.disabled .page-link {
+  color: #636363;
+  background-color: #1f2223;
+  border-color: #1f2223;
+  border-width: 1px;
+}
