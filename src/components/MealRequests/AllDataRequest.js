@@ -1,10 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Button, Card, Spinner, Tabs, Tab, Pagination } from "react-bootstrap";
+import { Button, Card, Spinner } from "react-bootstrap";
 import { useHistory } from "react-router";
 import firebase from "../../services/firebaseConfig";
-import { CSVLink } from "react-csv";
-import styled from "styled-components";
-import { getWhichMealTab, setWhichMealTab } from "../../utilities/storage";
 import "./index.css";
 import InfiniteScroll from "react-infinite-scroller";
 
@@ -13,14 +10,7 @@ const AllDataRequest = () => {
   const [loading, setloading] = useState(true);
   const [allData, setallData] = useState([]);
   const pageSize = 4;
-  const [allShowPagination, setallShowPagination] = useState(false);
-  const [allPagination, setallPagination] = useState(1);
   const [allPageNextAvailable, setallPageNextAvailable] = useState(false);
-  const [allPagePrevAvailable, setallPagePrevAvailable] = useState(false);
-  const [allLastSeen, setallLastSeen] = useState("");
-  const [allFirstSeen, setallFirstSeen] = useState("");
-  const [referenceNode, setReferenceNode] = useState();
-  const scrollRef = useRef();
   const [canCallApi, setCanCallApi] = useState(true);
   const lastPos = useRef("");
 
@@ -30,19 +20,8 @@ const AllDataRequest = () => {
     .limit(pageSize)
     .orderBy("timestamp", "desc");
 
-  //   var handleScroll = (event) => {
-  //     var node = event.target;
-  //     const bottom = node.scrollHeight - node.scrollTop === node.clientHeight;
-  //     // if (bottom) {
-  //     //   AllData();
-  //     // }
-  //   };
-  console.log("qiouweyuioghauf", allData);
-
   useEffect(() => {
-    // scrollRef.current.addEventListener("scroll", handleScroll);
     AllData();
-    // return () => scrollRef.current.removeEventListener("scroll", handleScroll);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -105,61 +84,6 @@ const AllDataRequest = () => {
           console.log(error.message);
         });
     }
-  };
-
-  const AllDataPageNext = async () => {
-    setloading(true);
-
-    allDBInstance
-      .startAfter(allLastSeen)
-      .get()
-      .then((result) => {
-        if (result.docs.length > 0) {
-          if (result.docs.length < pageSize) setallPageNextAvailable(false);
-          else setallPageNextAvailable(true);
-          setallPagePrevAvailable(true);
-          setallLastSeen(result.docs[result.docs.length - 1].data().timestamp);
-          setallFirstSeen(result.docs[0].data().timestamp);
-
-          setallPagination(allPagination + 1);
-          setloading(false);
-          setallData(mapData(result.docs));
-        } else {
-          setallPageNextAvailable(false);
-          setloading(false);
-        }
-      })
-      .catch((error) => {
-        console.log(error.message);
-      });
-  };
-
-  const AllDataPagePrev = async () => {
-    setloading(true);
-
-    allDBInstance
-      .endBefore(allFirstSeen)
-      .get()
-      .then((result) => {
-        console.log(result.docs.length);
-        if (result.docs.length > 0) {
-          if (result.docs.length < pageSize) setallPageNextAvailable(false);
-          else setallPageNextAvailable(true);
-
-          setallLastSeen(result.docs[result.docs.length - 1].data().timestamp);
-          setallFirstSeen(result.docs[0].data().timestamp);
-
-          setallPagination(allPagination - 1);
-          setloading(false);
-          setallData(mapData(result.docs));
-        } else {
-          setallPageNextAvailable(false);
-          setloading(false);
-        }
-      })
-      .catch((error) => {
-        console.log(error.message);
-      });
   };
 
   const SpinnerCont = () => {
@@ -322,30 +246,6 @@ const AllDataRequest = () => {
         <Button style={{ background: "#469623" }} onClick={AllData}>
           More Data
         </Button>
-        {/* <Pagination>
-            <Pagination.First
-              disabled={!allPagePrevAvailable}
-              onClick={() => {
-                setallPagination(1);
-                AllData();
-              }}
-            />
-            <Pagination.Prev
-              disabled={!allPagePrevAvailable}
-              onClick={() => {
-                if (allPagination > 1) {
-                  AllDataPagePrev();
-                }
-              }}
-            />
-            <Pagination.Item active>{allPagination}</Pagination.Item>
-            <Pagination.Next
-              disabled={!allPageNextAvailable}
-              onClick={() => {
-                AllDataPageNext();
-              }}
-            />
-          </Pagination> */}
       </div>
     </div>
   );
