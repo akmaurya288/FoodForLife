@@ -1,34 +1,62 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { FaBars } from "react-icons/fa";
 import { useLocation, useHistory } from "react-router-dom";
-import { isDistributor, isLogedIn } from "../../utilities/storage";
+import { isAdmin, isDistributor, isLogedIn } from "../../utilities/storage";
 
 const Navbar = (props) => {
   const location = useLocation();
   const history = useHistory();
   const [menu, setmenu] = useState(false);
+  const [navHeight, setnavHeight] = useState(150);
 
-  const signInBtn = () => {
+  useEffect(() => {
+    setNavHeight();
+  });
+
+  const setNavHeight = () => {
+    if (isLogedIn() && isAdmin()) {
+      setnavHeight(300);
+      return;
+    }
+    if (isLogedIn() && isDistributor()) {
+      setnavHeight(200);
+      return;
+    }
+    if (isLogedIn()) {
+      setnavHeight(150);
+      return;
+    }
+    setnavHeight(100);
+  };
+
+  const accountBtn = () => {
     setmenu(!menu);
     history.push({
-      pathname: "/signin",
+      pathname: "/account",
       state: { prePath: location.pathname },
     });
-  };
-  const signOutBtn = () => {
-    setmenu(!menu);
-    history.push("/signout");
   };
 
   const homeBtn = () => {
     setmenu(!menu);
     history.push("/");
   };
+
   const mealRequestBtn = () => {
     setmenu(!menu);
     history.push("/mealrequest");
   };
+
+  const distributionBtn = () => {
+    setmenu(!menu);
+    history.push("/distribution");
+  };
+  const divideMealBtn = () => {
+    setmenu(!menu);
+    history.push("/dividemeal");
+  };
+
   const myMealBtn = () => {
     setmenu(!menu);
     history.push("/mymeal");
@@ -49,29 +77,33 @@ const Navbar = (props) => {
         ></MenuBtn>
       </NavCont>
       <div style={{ height: 60, width: "100%" }}></div>
-      <MenuCont menu={menu}>
+      <MenuCont navHeight={navHeight} menu={menu}>
         <MenuItem onClick={homeBtn}>
           <MenuItemTxt>HOME</MenuItemTxt>
         </MenuItem>
         {isLogedIn() && isDistributor() ? (
+          <MenuItem onClick={distributionBtn}>
+            <MenuItemTxt>DISTRIBUTION</MenuItemTxt>
+          </MenuItem>
+        ) : null}
+        {isLogedIn() && isAdmin() ? (
+          <MenuItem onClick={divideMealBtn}>
+            <MenuItemTxt>DIVIDE MEAL</MenuItemTxt>
+          </MenuItem>
+        ) : null}
+        {isLogedIn() && isAdmin() ? (
           <MenuItem onClick={mealRequestBtn}>
             <MenuItemTxt>MEAL REQUEST</MenuItemTxt>
           </MenuItem>
         ) : null}
-        {isLogedIn() && !isDistributor() ? (
+        {isLogedIn() ? (
           <MenuItem onClick={myMealBtn}>
             <MenuItemTxt>MY MEAL</MenuItemTxt>
           </MenuItem>
         ) : null}
-        {isLogedIn() ? (
-          <MenuItem onClick={signOutBtn}>
-            <MenuItemTxt>SIGN OUT</MenuItemTxt>
-          </MenuItem>
-        ) : (
-          <MenuItem onClick={signInBtn}>
-            <MenuItemTxt>SIGN IN</MenuItemTxt>
-          </MenuItem>
-        )}
+        <MenuItem onClick={accountBtn}>
+          <MenuItemTxt>ACCOUNT</MenuItemTxt>
+        </MenuItem>
       </MenuCont>
     </MainCont>
   );
@@ -102,7 +134,7 @@ const MenuCont = styled.div`
   display: flex;
   flex-direction: column;
   transition: 0.3s;
-  margin-top: ${({ menu }) => (menu ? "0px" : "-150px")};
+  margin-top: ${({ navHeight, menu }) => (menu ? "0px" : `-${navHeight}px`)};
 `;
 const MenuItem = styled.div`
   display: flex;

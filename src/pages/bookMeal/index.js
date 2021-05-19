@@ -3,12 +3,10 @@ import {
   Button,
   Container,
   Form,
-  Row,
-  Col,
   InputGroup,
   FormControl,
   Modal,
-  Jumbotron,
+  Spinner,
 } from "react-bootstrap";
 import { useHistory } from "react-router";
 import firebase from "../../services/firebaseConfig";
@@ -19,8 +17,11 @@ import "./index.css";
 const BookMeal = () => {
   const history = useHistory();
 
+  const [initLoading, setinitLoading] = useState(true);
+  const [initLodingMessage, setinitLodingMessage] = useState("Loading...");
   const [canBook, setcanBook] = useState(false);
   const [alreadyBooked, setalreadyBooked] = useState(false);
+  const [loading, setloading] = useState(false);
 
   const [userChanged, setuserChanged] = useState(false);
   const [name, setname] = useState("");
@@ -30,16 +31,17 @@ const BookMeal = () => {
   const [geoPoint, setgeoPoint] = useState({ lat: 1, lng: 1 });
   const [phone, setphone] = useState("");
 
-  const [lunch, setlunch] = useState(true);
+  const [lunch, setlunch] = useState(false);
   const [dinner, setdinner] = useState(false);
-  const [quantity, setquantity] = useState(0);
+  const [quantityLunch, setQuantityLunch] = useState("");
+  const [quantityDinner, setQuantityDinner] = useState("");
   const [remark, setremark] = useState("");
 
   const [addressValid, setaddressValid] = useState(false);
   const [nameValid, setnameValid] = useState(false);
   const [phoneValid, setphoneValid] = useState(false);
-
-  const [quantityValid, setquantityValid] = useState(false);
+  const [quantityLunchValid, setquantityLunchValid] = useState(false);
+  const [quantityDinnerValid, setquantityDinnerValid] = useState(false);
 
   useEffect(() => {
     firebase.auth().onAuthStateChanged(function (user) {
@@ -51,30 +53,35 @@ const BookMeal = () => {
           checkPreviousOrder();
         }
       } else {
+        setinitLodingMessage("Sign In Ananymously");
+        firebase
+          .auth()
+          .signInAnonymously()
+          .then(() => {
+            setinitLodingMessage("Sign In Complete");
+          })
+          .catch((error) => {
+            setinitLodingMessage("Sign In error retry by refreshing page");
+          });
       }
     });
   }, []);
 
   const checkPreviousOrder = () => {
+    setinitLodingMessage("Checking Previous orders");
     const db = firebase.firestore();
+
+    var d = new Date(new Date().setDate(new Date().getDate() - 1));
+    d.setHours(0, 0, 0, 0);
+
     db.collection("mealRequests")
       .where("userid", "==", firebase.auth().currentUser.uid)
+      .where("timestamp", ">", new firebase.firestore.Timestamp.fromDate(d))
       .orderBy("timestamp", "desc")
       .get()
       .then((result) => {
-        var exist = false;
-        result.docs.every((element, index) => {
-          if (
-            new Date(element.data().timestamp.toDate()).setHours(0, 0, 0, 0) ===
-            new Date().setHours(0, 0, 0, 0)
-          ) {
-            exist = true;
-            return false;
-          }
-          return true;
-        });
-
-        if (exist) {
+        setinitLoading(false);
+        if (!result.empty) {
           setalreadyBooked(true);
         } else {
           setcanBook(true);
@@ -94,17 +101,16 @@ const BookMeal = () => {
       .get()
       .then((result) => {
         if (result.data()) {
-          console.log(result.data());
-          setname(result.data().name);
-          setaddress(result.data().address);
-          setaddressDetail(result.data().address_detail);
-          setgeoPoint({
-            lat: result.data().geopoint._lat,
-            lng: result.data().geopoint._long,
-          });
-          setphone(result.data().phone);
-        } else {
-          setname(firebase.auth().currentUser.displayName);
+          if (result.data().name) setname(result.data().name);
+          if (result.data().address) setaddress(result.data().address);
+          if (result.data().address_detail)
+            setaddressDetail(result.data().address_detail);
+          if (result.data().geopoint)
+            setgeoPoint({
+              lat: result.data().geopoint._lat,
+              lng: result.data().geopoint._long,
+            });
+          if (result.data().phone) setphone(result.data().phone);
         }
       })
       .catch((error) => {
@@ -114,25 +120,53 @@ const BookMeal = () => {
 
   const setMealAPI = () => {
     const db = firebase.firestore();
-    db.collection("mealRequests")
-      .doc()
-      .set({
-        name: name,
-        phone: phone,
-        email: firebase.auth().currentUser.email,
-        address: address,
-        address_detail: addressDetail,
-        geopoint: geoPoint,
-        userid: firebase.auth().currentUser.uid,
-        dinner: dinner,
-        lunch: lunch,
-        quantity: quantity,
-        remark: remark,
-        timestamp: new firebase.firestore.Timestamp.fromDate(new Date()),
-      })
-      .then((result) => {
+    const batch = db.batch();
+
+    const addMeal = db.collection("mealRequests").doc();
+    batch.set(addMeal, {
+      name: name,
+      phone: phone,
+      email: firebase.auth().currentUser.email,
+      address: address,
+      address_detail: addressDetail,
+      geopoint: geoPoint,
+      userid: firebase.auth().currentUser.uid,
+      dinner: dinner,
+      lunch: lunch,
+      quantityLunch: quantityLunch,
+      quantityDinner: quantityDinner,
+      remark: remark,
+      timestamp: new firebase.firestore.Timestamp.fromDate(new Date()),
+      delivered_lunch: false,
+      delivered_dinner: false,
+    });
+
+    let change = {
+      totalFamily: firebase.firestore.FieldValue.increment(1),
+    };
+    if (lunch)
+      change = {
+        ...change,
+        totalLunch: firebase.firestore.FieldValue.increment(quantityLunch),
+      };
+    if (dinner)
+      change = {
+        ...change,
+        totalDinner: firebase.firestore.FieldValue.increment(quantityDinner),
+      };
+    console.log(quantityLunch, "  ", quantityDinner);
+    let date = new Date().toLocaleDateString("fr-CA", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+
+    const incCount = db.collection("meal_details").doc(date);
+    batch.update(incCount, change);
+    batch
+      .commit()
+      .then(() => {
         history.push("/mymeal");
-        console.log(result.data());
       })
       .catch((error) => {
         console.log("error ", error.message);
@@ -153,7 +187,7 @@ const BookMeal = () => {
         lastorder: firebase.firestore.Timestamp.fromDate(new Date()),
       })
       .then((result) => {
-        console.log(result.data());
+        // console.log(result.data());
       })
       .catch((error) => {
         console.log("error ", error.message);
@@ -177,30 +211,25 @@ const BookMeal = () => {
       setaddressValid(true);
     } else setaddressValid(false);
 
-    if (quantity < 1) {
+    if (dinner && quantityDinner < 1) {
       valid = false;
-      setquantityValid(true);
-    } else setquantityValid(false);
+      setquantityDinnerValid(true);
+    } else setquantityDinnerValid(false);
 
-    console.log(geoPoint);
+    if (lunch && quantityLunch < 1) {
+      valid = false;
+      setquantityLunchValid(true);
+    } else setquantityLunchValid(false);
+
+    if (!lunch && !dinner) {
+      valid = false;
+      setquantityLunchValid(true);
+      setquantityDinnerValid(true);
+    }
+
     if (valid) {
       setMealAPI();
       if (userChanged) setUserAPI();
-    }
-  };
-
-  const mealHandler = (event) => {
-    if (event.target.id === "lunch") {
-      setlunch(true);
-      setdinner(false);
-    }
-    if (event.target.id === "dinner") {
-      setlunch(false);
-      setdinner(true);
-    }
-    if (event.target.id === "both") {
-      setlunch(true);
-      setdinner(true);
     }
   };
 
@@ -233,31 +262,6 @@ const BookMeal = () => {
 
   return (
     <div style={{ marginTop: 25, marginBottom: 64, padding: 8 }}>
-      {/* {isChangingAddress ? (
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 10,
-            height: "150vh",
-            background: "rgba(0,0,0,.5)",
-          }}
-        >
-          <Jumbotron
-            style={{
-              marginTop: 40,
-              width: "100vw",
-              height: "90vh",
-              background: "#1f2223",
-              boxShadow: "1px 1px 1px 1px black",
-            }}
-          >
-            <MapWithSearch confirm={mapChangeHandler}></MapWithSearch>
-          </Jumbotron>
-        </div>
-      ) : null} */}
       <MapPopUp
         show={isChangingAddress}
         onHide={() => {
@@ -294,7 +298,6 @@ const BookMeal = () => {
                 Please enter valid name.
               </Form.Control.Feedback>
             </Form.Group>
-
             <Form.Group controlId="formBasicPhone">
               <Form.Label style={{ marginLeft: 6 }}>Phone Number</Form.Label>
               <Form.Control
@@ -308,7 +311,6 @@ const BookMeal = () => {
                 isInvalid={phoneValid}
               />
             </Form.Group>
-
             <Form.Group style={{ marginTop: 24 }} controlId="formBasicName">
               <Form.Label style={{ marginLeft: 6 }}>
                 Detailed Address
@@ -323,11 +325,9 @@ const BookMeal = () => {
                 placeholder="Address Details"
               />
             </Form.Group>
-
             <Form.Label style={{ marginLeft: 6 }}>
               Google Map (Set Location nearest to your home)
             </Form.Label>
-
             <InputGroup className="mb-3">
               <FormControl
                 disabled
@@ -340,7 +340,7 @@ const BookMeal = () => {
                 isInvalid={addressValid}
               />
               <InputGroup.Append>
-                <Button variant="primary" onClick={changeAddress}>
+                <Button size="sm" variant="primary" onClick={changeAddress}>
                   <SiGooglemaps
                     style={{ fontSize: "2rem", margin: 12 }}
                   ></SiGooglemaps>
@@ -348,51 +348,44 @@ const BookMeal = () => {
               </InputGroup.Append>
             </InputGroup>
 
-            <fieldset>
-              <Form.Group style={{ marginLeft: 6, marginTop: 6 }} as={Row}>
-                <Form.Label as="legend" column sm={2}>
-                  Meals
-                </Form.Label>
-                <Col sm={10}>
-                  <Form.Check
-                    type="radio"
-                    label="Lunch"
-                    name="formHorizontalRadios"
-                    id="lunch"
-                    defaultChecked
-                    onChange={mealHandler}
-                  />
-                  <Form.Check
-                    type="radio"
-                    label="Dinner"
-                    name="formHorizontalRadios"
-                    id="dinner"
-                    onChange={mealHandler}
-                  />
-                  <Form.Check
-                    type="radio"
-                    label="Both"
-                    name="formHorizontalRadios"
-                    id="both"
-                    onChange={mealHandler}
-                  />
-                </Col>
-              </Form.Group>
-            </fieldset>
-
-            <Form.Group style={{ marginTop: 24 }} controlId="formBasicQuantity">
-              <Form.Label style={{ marginLeft: 6 }}>Quantity</Form.Label>
-              <Form.Control
+            <InputGroup className="mb-3">
+              <InputGroup.Prepend>
+                <InputGroup.Checkbox
+                  defaultChecked={lunch}
+                  onChange={() => setlunch((preState) => !preState)}
+                />
+              </InputGroup.Prepend>
+              <InputGroup.Prepend>
+                <InputGroup.Text> Lunch </InputGroup.Text>
+              </InputGroup.Prepend>
+              <FormControl
                 type="number"
-                value={quantity}
-                onChange={(val) => setquantity(val.target.value)}
-                placeholder="Quantity"
-                isInvalid={quantityValid}
+                value={quantityLunch}
+                onChange={(val) => setQuantityLunch(val.target.value)}
+                placeholder="Please enter how many plates required"
+                isInvalid={quantityLunchValid}
+                disabled={!lunch}
               />
-              <Form.Control.Feedback type="invalid">
-                Please enter how many plates required
-              </Form.Control.Feedback>
-            </Form.Group>
+            </InputGroup>
+            <InputGroup className="mb-3">
+              <InputGroup.Prepend>
+                <InputGroup.Checkbox
+                  defaultChecked={dinner}
+                  onChange={() => setdinner((preState) => !preState)}
+                />
+              </InputGroup.Prepend>
+              <InputGroup.Prepend>
+                <InputGroup.Text> Dinner </InputGroup.Text>
+              </InputGroup.Prepend>
+              <FormControl
+                type="number"
+                value={quantityDinner}
+                onChange={(val) => setQuantityDinner(val.target.value)}
+                placeholder="Please enter how many plates required"
+                isInvalid={quantityDinnerValid}
+                disabled={!dinner}
+              />
+            </InputGroup>
 
             <Form.Group style={{ marginTop: 24 }} controlId="formBasicRemark">
               <Form.Label style={{ marginLeft: 6 }}>Remark</Form.Label>
@@ -408,28 +401,54 @@ const BookMeal = () => {
                 variant="primary"
                 onClick={submitRequest}
               >
+                {loading ? (
+                  <Spinner
+                    as="span"
+                    animation="grow"
+                    size="sm"
+                    role="status"
+                    aria-hidden="true"
+                  />
+                ) : null}
                 Submit
               </Button>
             </div>
           </Form>
         ) : (
           <div>
-            {alreadyBooked ? (
-              <div>
-                <div>Already placed an order today. </div>
-                <div>Go to My Meal Section to see your order.</div>
-                <Button
-                  style={{ marginTop: 24 }}
-                  onClick={() => history.push("/mymeal")}
-                >
-                  My Meal
-                </Button>
+            {initLoading ? (
+              <div
+                style={{
+                  display: "flex",
+                  height: 200,
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <Spinner animation="border" variant="success" />
+                <div>{initLodingMessage}</div>
               </div>
             ) : (
               <div>
-                <div>Order Timing:</div>
-                <div>3:00 PM to 11:00 PM</div>
-                <div>Order must be placed 1 day before delivery date</div>
+                {alreadyBooked ? (
+                  <div>
+                    <div>Already placed an order today. </div>
+                    <div>Go to My Meal Section to see your order.</div>
+                    <Button
+                      style={{ marginTop: 24 }}
+                      onClick={() => history.push("/mymeal")}
+                    >
+                      My Meal
+                    </Button>
+                  </div>
+                ) : (
+                  <div>
+                    <div>Order Timing:</div>
+                    <div>3:00 PM to 11:00 PM</div>
+                    <div>Order must be placed 1 day before delivery date</div>
+                  </div>
+                )}
               </div>
             )}
           </div>

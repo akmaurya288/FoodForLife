@@ -1,14 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+/* global google */
 import {
   Button,
   Container,
   Form,
-  Row,
-  Col,
   InputGroup,
   FormControl,
-  Jumbotron,
   Modal,
+  Spinner,
 } from "react-bootstrap";
 import { useHistory } from "react-router";
 import firebase from "../../services/firebaseConfig";
@@ -21,6 +20,7 @@ const EditMeal = ({ match }) => {
   const history = useHistory();
 
   const [canEdit, setcanEdit] = useState(false);
+  const [loading, setloading] = useState(false);
 
   const [userChanged, setuserChanged] = useState(false);
   const [name, setname] = useState("");
@@ -32,18 +32,27 @@ const EditMeal = ({ match }) => {
 
   const [lunch, setlunch] = useState(true);
   const [dinner, setdinner] = useState(false);
-  const [quantity, setquantity] = useState(0);
+  const [quantityLunch, setQuantityLunch] = useState("");
+  const [quantityDinner, setQuantityDinner] = useState("");
+  const [lunchOld, setlunchOld] = useState(true);
+  const [dinnerOld, setdinnerOld] = useState(false);
+  const [quantityLunchOld, setQuantityLunchOld] = useState("");
+  const [quantityDinnerOld, setQuantityDinnerOld] = useState("");
   const [remark, setremark] = useState("");
 
   const [addressValid, setaddressValid] = useState(false);
   const [nameValid, setnameValid] = useState(false);
   const [phoneValid, setphoneValid] = useState(false);
-
-  const [quantityValid, setquantityValid] = useState(false);
+  const [quantityLunchValid, setquantityLunchValid] = useState(false);
+  const [quantityDinnerValid, setquantityDinnerValid] = useState(false);
 
   const [deletePopupShow, setdeletePopupShow] = useState(false);
 
+  //   const addressRef = useRef(null);
+  //   let autoComplete = null;
+
   useEffect(() => {
+    // mapGeocoder();
     firebase.auth().onAuthStateChanged(function (user) {
       if (user) {
         if (
@@ -59,6 +68,44 @@ const EditMeal = ({ match }) => {
     });
   }, []);
 
+  //   const initAutocomplete = () => {
+  //     const options = {
+  //       strictbounds: true,
+  //       type: ["address"],
+  //       componentRestrictions: { country: "in" },
+  //       fields: ["geometry", "address_components"],
+  //     };
+  //     autoComplete = new google.maps.places.Autocomplete(
+  //       addressRef.current,
+  //       options
+  //     );
+  //     autoComplete.setBounds({
+  //       north: 28.5,
+  //       south: 28.381183,
+  //       west: 76.99,
+  //       east: 77.1,
+  //     });
+
+  //     autoComplete.addListener("place_changed", onPlaceChanged);
+  //   };
+  //   const mapGeocoder = () => {
+  //     let geocoder = new google.maps.Geocoder();
+  //     geocoder.geocode(
+  //       { address: "1101 SECTOR-31 GURGAON HARYANA" },
+  //       (result, status) => {
+  //         console.log(status);
+
+  //         console.log(result);
+  //         console.log(result[0].geometry.location.lat());
+  //         console.log(result[0].geometry.location.lng());
+  //       }
+  //     );
+  //   };
+
+  //   const onPlaceChanged = () => {
+  //     console.log(autoComplete.getPlace());
+  //   };
+
   const GetMealRequest = () => {
     const db = firebase.firestore();
     db.collection("mealRequests")
@@ -72,10 +119,16 @@ const EditMeal = ({ match }) => {
         setaddressDetail(data.address_detail);
         setgeoPoint(data.geopoint);
         setdinner(data.dinner);
+        setdinnerOld(data.dinner);
         setlunch(data.lunch);
-        setquantity(data.quantity);
+        setlunchOld(data.lunch);
+        setQuantityLunch(data.quantityLunch);
+        setQuantityDinner(data.quantityDinner);
+        setQuantityLunchOld(data.quantityLunch);
+        setQuantityDinnerOld(data.quantityDinner);
         setremark(data.remark);
         setcanEdit(true);
+        // initAutocomplete();
       })
       .catch((error) => {
         console.log("error ", error.message);
@@ -84,25 +137,79 @@ const EditMeal = ({ match }) => {
 
   const setMealAPI = () => {
     const db = firebase.firestore();
-    db.collection("mealRequests")
-      .doc(id)
-      .set({
-        name: name,
-        phone: phone,
-        email: firebase.auth().currentUser.email,
-        address: address,
-        address_detail: addressDetail,
-        geopoint: geoPoint,
-        userid: firebase.auth().currentUser.uid,
-        dinner: dinner,
-        lunch: lunch,
-        quantity: quantity,
-        remark: remark,
-        timestamp: new firebase.firestore.Timestamp.fromDate(new Date()),
-      })
-      .then((result) => {
+    const batch = db.batch();
+    setloading(true);
+
+    const addMeal = db.collection("mealRequests").doc(id);
+    batch.update(addMeal, {
+      name: name,
+      phone: phone,
+      email: firebase.auth().currentUser.email,
+      address: address,
+      address_detail: addressDetail,
+      geopoint: geoPoint,
+      userid: firebase.auth().currentUser.uid,
+      dinner: dinner,
+      lunch: lunch,
+      quantityLunch: quantityLunch,
+      quantityDinner: quantityDinner,
+      remark: remark,
+      timestamp: new firebase.firestore.Timestamp.fromDate(new Date()),
+    });
+
+    var change = {};
+    if (lunch && !lunchOld)
+      change = {
+        ...change,
+        totalLunch: firebase.firestore.FieldValue.increment(quantityLunch),
+      };
+    if (!lunch && lunchOld)
+      change = {
+        ...change,
+        totalLunch: firebase.firestore.FieldValue.increment(-quantityLunchOld),
+      };
+
+    if (lunch && lunchOld)
+      change = {
+        ...change,
+        totalLunch: firebase.firestore.FieldValue.increment(
+          quantityLunch - quantityLunchOld
+        ),
+      };
+
+    if (dinner && !dinnerOld)
+      change = {
+        ...change,
+        totalDinner: firebase.firestore.FieldValue.increment(quantityDinner),
+      };
+    if (!dinner && dinnerOld)
+      change = {
+        ...change,
+        totalDinner: firebase.firestore.FieldValue.increment(
+          -quantityDinnerOld
+        ),
+      };
+
+    if (dinner && dinnerOld)
+      change = {
+        ...change,
+        totalDinner: firebase.firestore.FieldValue.increment(
+          quantityDinner - quantityDinnerOld
+        ),
+      };
+
+    let date = new Date().toLocaleDateString("fr-CA", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const incCount = db.collection("meal_details").doc(date);
+    batch.update(incCount, change);
+    batch
+      .commit()
+      .then(() => {
+        setloading(false);
         history.push("/mymeal");
-        console.log(result.data());
       })
       .catch((error) => {
         console.log("error ", error.message);
@@ -123,9 +230,7 @@ const EditMeal = ({ match }) => {
         timestamp: firebase.firestore.Timestamp.fromDate(new Date()),
         lastorder: firebase.firestore.Timestamp.fromDate(new Date()),
       })
-      .then((result) => {
-        console.log(result.data());
-      })
+      .then((result) => {})
       .catch((error) => {
         console.log("error ", error.message);
       });
@@ -148,30 +253,26 @@ const EditMeal = ({ match }) => {
       setaddressValid(true);
     } else setaddressValid(false);
 
-    if (quantity < 1) {
+    if (dinner && quantityDinner < 1) {
       valid = false;
-      setquantityValid(true);
-    } else setquantityValid(false);
+      setquantityDinnerValid(true);
+    } else setquantityDinnerValid(false);
+
+    if (lunch && quantityLunch < 1) {
+      valid = false;
+      setquantityLunchValid(true);
+    } else setquantityLunchValid(false);
+
+    if (!lunch && !dinner) {
+      valid = false;
+      setquantityLunchValid(true);
+      setquantityDinnerValid(true);
+    }
 
     console.log(geoPoint);
     if (valid) {
       setMealAPI();
       if (userChanged) setUserAPI();
-    }
-  };
-
-  const mealHandler = (event) => {
-    if (event.target.id === "lunch") {
-      setlunch(true);
-      setdinner(false);
-    }
-    if (event.target.id === "dinner") {
-      setlunch(false);
-      setdinner(true);
-    }
-    if (event.target.id === "both") {
-      setlunch(true);
-      setdinner(true);
     }
   };
 
@@ -189,10 +290,38 @@ const EditMeal = ({ match }) => {
 
   const deleteMealAPI = () => {
     const db = firebase.firestore();
-    db.collection("mealRequests")
-      .doc(id)
-      .delete()
-      .then((result) => {
+    const batch = db.batch();
+
+    const deleteMeal = db.collection("mealRequests").doc(id);
+    batch.delete(deleteMeal);
+
+    let change = {
+      totalFamily: firebase.firestore.FieldValue.increment(-1),
+    };
+    if (lunchOld)
+      change = {
+        ...change,
+        totalLunch: firebase.firestore.FieldValue.increment(-quantityLunchOld),
+      };
+    if (dinnerOld)
+      change = {
+        ...change,
+        totalDinner: firebase.firestore.FieldValue.increment(
+          -quantityDinnerOld
+        ),
+      };
+
+    let date = new Date().toLocaleDateString("fr-CA", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const decrease_count = db.collection("meal_details").doc(date);
+    batch.update(decrease_count, change);
+
+    batch
+      .commit()
+      .then(() => {
         history.push("/mymeal");
       })
       .catch((error) => {
@@ -204,6 +333,7 @@ const EditMeal = ({ match }) => {
     return (
       <Modal
         show={show}
+        onHide={onHide}
         size="sm"
         aria-labelledby="contained-modal-title-vcenter"
         centered
@@ -244,31 +374,6 @@ const EditMeal = ({ match }) => {
     <>
       <DeletePopup show={deletePopupShow} onHide={() => {}} />
       <div style={{ marginTop: 25, marginBottom: 64, padding: 8 }}>
-        {/* {isChangingAddress ? (
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              zIndex: 10,
-              height: "150vh",
-              background: "rgba(0,0,0,.5)",
-            }}
-          >
-            <Jumbotron
-              style={{
-                marginTop: 40,
-                width: "100vw",
-                height: "90vh",
-                background: "#1f2223",
-                boxShadow: "1px 1px 1px 1px black",
-              }}
-            >
-              <MapWithSearch confirm={mapChangeHandler}></MapWithSearch>
-            </Jumbotron>
-          </div>
-        ) : null} */}
         <MapPopUp
           show={isChangingAddress}
           onHide={() => {
@@ -291,7 +396,7 @@ const EditMeal = ({ match }) => {
           {canEdit ? (
             <Form>
               <Form.Group style={{ marginTop: 24 }} controlId="formBasicName">
-                <Form.Label style={{ marginLeft: 6 }}>Name</Form.Label>
+                <Form.Label style={{ marginLeft: 6 }}>Name*</Form.Label>
                 <Form.Control
                   type="text"
                   value={name}
@@ -308,7 +413,7 @@ const EditMeal = ({ match }) => {
               </Form.Group>
 
               <Form.Group controlId="formBasicPhone">
-                <Form.Label style={{ marginLeft: 6 }}>Phone Number</Form.Label>
+                <Form.Label style={{ marginLeft: 6 }}>Phone Number*</Form.Label>
                 <Form.Control
                   type="text"
                   value={phone}
@@ -320,6 +425,20 @@ const EditMeal = ({ match }) => {
                   isInvalid={phoneValid}
                 />
               </Form.Group>
+              {/* 
+              <Form.Group style={{ marginTop: 24 }} controlId="formBasicName">
+                <Form.Label style={{ marginLeft: 6 }}>Deliver To*</Form.Label>
+                <Form.Control
+                  ref={addressRef}
+                  type="text"
+                  value={addressDetail}
+                  onChange={(val) => {
+                    setaddressDetail(val.target.value);
+                    setuserChanged(true);
+                  }}
+                  placeholder="Address Details"
+                />
+              </Form.Group> */}
 
               <Form.Group style={{ marginTop: 24 }} controlId="formBasicName">
                 <Form.Label style={{ marginLeft: 6 }}>
@@ -360,54 +479,44 @@ const EditMeal = ({ match }) => {
                 </InputGroup.Append>
               </InputGroup>
 
-              <fieldset>
-                <Form.Group style={{ marginLeft: 6, marginTop: 6 }} as={Row}>
-                  <Form.Label as="legend" column sm={2}>
-                    Meals
-                  </Form.Label>
-                  <Col sm={10}>
-                    <Form.Check
-                      type="radio"
-                      label="Lunch"
-                      name="formHorizontalRadios"
-                      id="lunch"
-                      defaultChecked
-                      onChange={mealHandler}
-                    />
-                    <Form.Check
-                      type="radio"
-                      label="Dinner"
-                      name="formHorizontalRadios"
-                      id="dinner"
-                      onChange={mealHandler}
-                    />
-                    <Form.Check
-                      type="radio"
-                      label="Both"
-                      name="formHorizontalRadios"
-                      id="both"
-                      onChange={mealHandler}
-                    />
-                  </Col>
-                </Form.Group>
-              </fieldset>
-
-              <Form.Group
-                style={{ marginTop: 24 }}
-                controlId="formBasicQuantity"
-              >
-                <Form.Label style={{ marginLeft: 6 }}>Quantity</Form.Label>
-                <Form.Control
+              <InputGroup className="mb-3">
+                <InputGroup.Prepend>
+                  <InputGroup.Checkbox
+                    defaultChecked={lunch}
+                    onChange={() => setlunch((preState) => !preState)}
+                  />
+                </InputGroup.Prepend>
+                <InputGroup.Prepend>
+                  <InputGroup.Text> Lunch </InputGroup.Text>
+                </InputGroup.Prepend>
+                <FormControl
                   type="number"
-                  value={quantity}
-                  onChange={(val) => setquantity(val.target.value)}
-                  placeholder="Quantity"
-                  isInvalid={quantityValid}
+                  value={quantityLunch}
+                  onChange={(val) => setQuantityLunch(val.target.value)}
+                  placeholder="Please enter how many plates required"
+                  isInvalid={quantityLunchValid}
+                  disabled={!lunch}
                 />
-                <Form.Control.Feedback type="invalid">
-                  Please enter how many plates required
-                </Form.Control.Feedback>
-              </Form.Group>
+              </InputGroup>
+              <InputGroup className="mb-3">
+                <InputGroup.Prepend>
+                  <InputGroup.Checkbox
+                    defaultChecked={dinner}
+                    onChange={() => setdinner((preState) => !preState)}
+                  />
+                </InputGroup.Prepend>
+                <InputGroup.Prepend>
+                  <InputGroup.Text> Dinner </InputGroup.Text>
+                </InputGroup.Prepend>
+                <FormControl
+                  type="number"
+                  value={quantityDinner}
+                  onChange={(val) => setQuantityDinner(val.target.value)}
+                  placeholder="Please enter how many plates required"
+                  isInvalid={quantityDinnerValid}
+                  disabled={!dinner}
+                />
+              </InputGroup>
 
               <Form.Group style={{ marginTop: 24 }} controlId="formBasicRemark">
                 <Form.Label style={{ marginLeft: 6 }}>Remark</Form.Label>
@@ -430,6 +539,15 @@ const EditMeal = ({ match }) => {
                   variant="primary"
                   onClick={submitRequest}
                 >
+                  {loading ? (
+                    <Spinner
+                      as="span"
+                      animation="grow"
+                      size="sm"
+                      role="status"
+                      aria-hidden="true"
+                    />
+                  ) : null}
                   Submit
                 </Button>
               </div>

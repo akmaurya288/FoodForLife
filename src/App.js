@@ -1,6 +1,5 @@
 import "./App.css";
 import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
-import GoogleLogin from "./pages/auth/googleLogin";
 import firebase from "./services/firebaseConfig";
 import Home from "./pages/home";
 import Navbar from "./components/Navbar";
@@ -8,8 +7,10 @@ import { useEffect, useState } from "react";
 import {
   isDistributor,
   isLogedIn,
+  isAdmin,
   setIsDistributor,
   setIsLogedIn,
+  setIsAdmin,
 } from "./utilities/storage";
 import GoogleLogOut from "./pages/auth/googleLogOut";
 import MyMeal from "./pages/myMeal";
@@ -19,6 +20,9 @@ import MealRequests from "./pages/MealRequests";
 import MealDetails from "./pages/MealRequests/datalis";
 import MyMealDetails from "./pages/myMeal/details";
 import DataCreater from "./pages/MealRequests/DataCreater";
+import Distribution from "./pages/Distribution.js";
+import AccountPage from "./pages/auth";
+import DivideMeal from "./pages/DivideMeal";
 
 function App() {
   firebase.analytics();
@@ -34,8 +38,13 @@ function App() {
           .doc(user.uid)
           .get()
           .then((result) => {
-            if (result.data() && result.data().isDistributor) {
-              setIsDistributor(true);
+            if (result.data()) {
+              if (result.data().isDistributor === true) {
+                setIsDistributor(true);
+              } else setIsDistributor(false);
+              if (result.data().isAdmin === true) {
+                setIsAdmin(true);
+              } else setIsAdmin(false);
               setIsLogedIn(true);
               setRefresh(refresh + 1);
             }
@@ -46,6 +55,7 @@ function App() {
       } else {
         setIsLogedIn(false);
         setIsDistributor(false);
+        setIsAdmin(false);
         setRefresh(refresh + 1);
       }
     });
@@ -54,7 +64,11 @@ function App() {
 
   return (
     <Router>
-      <Navbar isDistributor={isDistributor()} isLogedIn={isLogedIn()}></Navbar>
+      <Navbar
+        isAdmin={isAdmin()}
+        isDistributor={isDistributor()}
+        isLogedIn={isLogedIn()}
+      ></Navbar>
       <Switch>
         <Route path="/" component={Home} exact></Route>
         <Route path="/createdata" component={DataCreater} exact></Route>
@@ -64,8 +78,10 @@ function App() {
         <Route path="/bookmeal/edit/:id" component={EditMeal} exact></Route>
         <Route path="/mealrequest" component={MealRequests} exact></Route>
         <Route path="/mealrequest/:id" component={MealDetails} exact></Route>
-        <Route path="/signin" component={GoogleLogin} exact></Route>
+        <Route path="/distribution" component={Distribution} exact></Route>
+        <Route path="/dividemeal" component={DivideMeal} exact></Route>
         <Route path="/signout" component={GoogleLogOut} exact></Route>
+        <Route path="/account" component={AccountPage} exact></Route>
       </Switch>
     </Router>
   );

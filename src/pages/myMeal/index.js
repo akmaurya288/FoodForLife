@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Button, Card, Container } from "react-bootstrap";
+import { Button, Card, Container, Spinner } from "react-bootstrap";
 import { useHistory } from "react-router";
 import firebase from "../../services/firebaseConfig";
 
@@ -7,7 +7,8 @@ const MyMeal = () => {
   const history = useHistory();
   const [mealData, setmealData] = useState([]);
   const [oldMealData, setoldMealData] = useState([]);
-  const [todayMeal, settodayMeal] = useState([]);
+  const [loading, setloading] = useState(true);
+
   useEffect(() => {
     firebase.auth().onAuthStateChanged(function (user) {
       if (user) {
@@ -18,6 +19,7 @@ const MyMeal = () => {
   }, []);
 
   const getMealAPI = () => {
+    setloading(true);
     const db = firebase.firestore();
     db.collection("mealRequests")
       .where("userid", "==", firebase.auth().currentUser.uid)
@@ -36,8 +38,10 @@ const MyMeal = () => {
             temp.push({ ...data, id: element.id });
           else tempOld.push({ ...data, id: element.id });
         });
+        console.log(temp);
         setmealData(temp);
         setoldMealData(tempOld);
+        setloading(false);
       })
       .catch((error) => {
         console.log("error ", error.message);
@@ -86,10 +90,11 @@ const MyMeal = () => {
 
   const CardItem = ({ item, index }) => {
     var meal = "";
-    if (item.lunch) meal = "Lunch  - " + item.quantity;
-    if (item.dinner) meal = "Dinner  - " + item.quantity;
+    if (item.lunch) meal = "Lunch  - " + item.quantityLunch;
+    if (item.dinner) meal = "Dinner  - " + item.quantityDinner;
     if (item.lunch && item.dinner)
-      meal = "Both ( Lunch & Dinner )  - " + item.quantity;
+      meal =
+        "Lunch - " + item.quantityLunch + " & Dinner - " + item.quantityDinner;
 
     const timeStampDate = item.timestamp;
     const dateInMillis = timeStampDate.seconds * 1000;
@@ -138,6 +143,7 @@ const MyMeal = () => {
             meal="Dinner"
           ></GetDelivered>
         </div>
+
         <Card.Body>
           <Card.Title>{meal}</Card.Title>
           {item.timestamp ? (
@@ -184,6 +190,21 @@ const MyMeal = () => {
     );
   };
 
+  const SpinnerCont = () => {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+        }}
+      >
+        <Spinner animation="border" variant="success" role="status">
+          <span className="sr-only">Loading...</span>
+        </Spinner>
+      </div>
+    );
+  };
+
   return (
     <div style={{ marginTop: 20, marginBottom: 64 }}>
       <div
@@ -204,28 +225,38 @@ const MyMeal = () => {
       >
         Order Meal
       </div>
-      {mealData
-        ? mealData.map((item, index) => {
-            return <CardItem key={index} item={item} index={index}></CardItem>;
-          })
-        : null}
-      {oldMealData ? (
-        <div
-          style={{
-            color: "white",
-            marginLeft: 12,
-            marginTop: 40,
-            fontWeight: "bold",
-          }}
-        >
-          Old Meal Requests
+      {loading ? (
+        <SpinnerCont />
+      ) : (
+        <div>
+          {mealData
+            ? mealData.map((item, index) => {
+                return (
+                  <CardItem key={index} item={item} index={index}></CardItem>
+                );
+              })
+            : null}
+          {oldMealData.length > 0 ? (
+            <div
+              style={{
+                color: "white",
+                marginLeft: 12,
+                marginTop: 40,
+                fontWeight: "bold",
+              }}
+            >
+              Old Meal Requests
+            </div>
+          ) : null}
+          {oldMealData
+            ? oldMealData.map((item, index) => {
+                return (
+                  <CardItem key={index} item={item} index={index}></CardItem>
+                );
+              })
+            : null}
         </div>
-      ) : null}
-      {oldMealData
-        ? oldMealData.map((item, index) => {
-            return <CardItem key={index} item={item} index={index}></CardItem>;
-          })
-        : null}
+      )}
     </div>
   );
 };

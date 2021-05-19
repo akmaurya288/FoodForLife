@@ -4,18 +4,24 @@ import { useHistory } from "react-router";
 import firebase from "../../services/firebaseConfig";
 import "./index.css";
 import InfiniteScroll from "react-infinite-scroller";
+import { CSVLink } from "react-csv";
+import styled from "styled-components";
 
-const AllDataRequest = () => {
+const DinnerDataRequest = () => {
   const history = useHistory();
   const [loading, setloading] = useState(true);
-  const [allData, setallData] = useState([]);
+  const [data, setData] = useState([]);
   const pageSize = 10;
   const [allPageNextAvailable, setallPageNextAvailable] = useState(false);
   const [canCallApi, setCanCallApi] = useState(true);
   const lastPos = useRef("");
+  const [createdCSV, setcreatedCSV] = useState(false);
+  const [csvData, setcsvData] = useState([]);
+  const [csvFileName, setcsvFileName] = useState("Meal_Request_List");
+  const [spreadLoding, setspreadLoding] = useState(false);
 
   useEffect(() => {
-    AllData();
+    callAPI();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -31,12 +37,22 @@ const AllDataRequest = () => {
     return temp;
   };
 
-  const AllData = async () => {
+  const callAPI = async () => {
     if (canCallApi) {
       setCanCallApi(false);
+
+      var d = new Date(new Date().setDate(new Date().getDate() - 1));
+      d.setHours(0, 0, 0, 0);
+      var d2 = new Date(new Date().setDate(new Date().getDate()));
+      d2.setHours(0, 0, 0, 0);
+
       firebase
         .firestore()
         .collection("mealRequests")
+        // .where("timestamp", ">", new firebase.firestore.Timestamp.fromDate(d))
+        // .where("timestamp", "<", new firebase.firestore.Timestamp.fromDate(d2))
+        .where("dinner", "==", true)
+        .where("delivered_dinner", "==", false)
         .limit(pageSize)
         .orderBy("timestamp", "desc")
         .startAfter(lastPos.current)
@@ -49,9 +65,9 @@ const AllDataRequest = () => {
               result.docs[result.docs.length - 1].data().timestamp;
 
             setloading(false);
-            var data = mapData(result.docs);
+            var dataList = mapData(result.docs);
 
-            setallData(allData.concat(data));
+            setData(data.concat(dataList));
             setCanCallApi(true);
           } else {
             setallPageNextAvailable(false);
@@ -121,7 +137,6 @@ const AllDataRequest = () => {
 
   const CardItem = ({ item, index }) => {
     var meal = "";
-
     if (item.lunch) meal = "Lunch  - " + item.quantityLunch;
     if (item.dinner) meal = "Dinner  - " + item.quantityDinner;
     if (item.lunch && item.dinner)
@@ -140,7 +155,7 @@ const AllDataRequest = () => {
         onClick={() => {
           history.push({
             pathname: `/mealrequest/${item.id}`,
-            state: { item: item, mealType: "all" },
+            state: { item: item, mealType: "dinner" },
           });
         }}
         style={{
@@ -163,11 +178,6 @@ const AllDataRequest = () => {
           }}
         >
           <GetDelivered
-            delivered={item.delivered_lunch}
-            onway={item.onway_lunch}
-            meal="Lunch"
-          ></GetDelivered>
-          <GetDelivered
             delivered={item.delivered_dinner}
             onway={item.onway_dinner}
             meal="Dinner"
@@ -181,12 +191,89 @@ const AllDataRequest = () => {
               {item.address}
             </Card.Subtitle>
           ) : null}
-          <Card.Text>{meal}</Card.Text>{" "}
+          <Card.Text>{meal}</Card.Text>
           {item.timestamp ? (
             <Card.Subtitle className="mb-2 text-muted">{date}</Card.Subtitle>
           ) : null}
         </Card.Body>
       </Card>
+    );
+  };
+
+  const ToSpreadSheet = () => {
+    var d = new Date(new Date().setDate(new Date().getDate() - 1));
+    d.setHours(0, 0, 0, 0);
+    var d2 = new Date(new Date().setDate(new Date().getDate()));
+    d2.setHours(0, 0, 0, 0);
+    setspreadLoding(true);
+    firebase
+      .firestore()
+      .collection("mealRequests")
+      // .where("timestamp", ">", new firebase.firestore.Timestamp.fromDate(d))
+      // .where("timestamp", "<", new firebase.firestore.Timestamp.fromDate(d2))
+      .where("dinner", "==", true)
+      .orderBy("timestamp", "desc")
+      .get()
+      .then((result) => {
+        var dataList = mapData(result.docs);
+        var temp = [
+          [
+            "Address Line 1",
+            "Address Line 2",
+            "City",
+            "State",
+            "Postal Code",
+            "Address Help",
+            "name",
+            "phone",
+            "meal",
+            "quantity",
+          ],
+        ];
+
+        setcsvFileName("dinner_list_" + new Date().toDateString());
+        dataList.forEach((data) => {
+          var meal = "";
+          if (data.dinner) meal = "Dinner";
+
+          temp.push([
+            data.address,
+            "",
+            "gurgaon",
+            "haryana",
+            "",
+            data.address_detail,
+            data.name,
+            data.phone,
+            meal,
+            data.quantityDinner,
+          ]);
+        });
+        setcsvData(temp);
+        setcreatedCSV(true);
+        setspreadLoding(false);
+      })
+      .catch((error) => {
+        console.log(error.message);
+      });
+  };
+
+  const CSVButtonCont = () => {
+    return (
+      <ButtonStyled
+        style={{ margin: 12, marginBottom: 0 }}
+        size="sm"
+        // onClick={() => setcreatedCSV(false)}
+        variant="success"
+      >
+        <CSVLink
+          filename={csvFileName}
+          data={csvData}
+          style={{ color: "white" }}
+        >
+          Download
+        </CSVLink>
+      </ButtonStyled>
     );
   };
 
@@ -198,17 +285,40 @@ const AllDataRequest = () => {
         height: window.innerHeight - 110,
       }}
     >
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        {createdCSV && csvData.length > 0 ? (
+          <CSVButtonCont />
+        ) : (
+          <ButtonStyled
+            style={{ margin: 12 }}
+            size="sm"
+            onClick={ToSpreadSheet}
+            variant="success"
+          >
+            {spreadLoding ? (
+              <Spinner
+                as="span"
+                animation="grow"
+                size="sm"
+                role="status"
+                aria-hidden="true"
+              />
+            ) : null}
+            Spreadsheet
+          </ButtonStyled>
+        )}
+      </div>
       {loading ? <SpinnerCont /> : null}
       <InfiniteScroll
         pageStart={0}
-        loadMore={AllData}
+        loadMore={callAPI}
         hasMore={allPageNextAvailable}
         useWindow={false}
         threshold={40}
         loader={<SpinnerCont key={0}></SpinnerCont>}
       >
-        {allData
-          ? allData.map((item, index) => {
+        {data
+          ? data.map((item, index) => {
               return (
                 <CardItem key={index} item={item} index={index}></CardItem>
               );
@@ -219,4 +329,8 @@ const AllDataRequest = () => {
   );
 };
 
-export default AllDataRequest;
+export default DinnerDataRequest;
+
+const ButtonStyled = styled(Button)`
+  margin: 8px;
+`;

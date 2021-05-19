@@ -7,6 +7,7 @@ import styled from "styled-components";
 import AutoComplete from "./Autocomplete";
 import MarkerIcon from "./Marker";
 import { Button } from "react-bootstrap";
+import { BiCurrentLocation } from "react-icons/bi";
 
 const Wrapper = styled.main`
   width: 100%;
@@ -90,11 +91,12 @@ class MapWithSearch extends Component {
       { location: { lat: this.state.lat, lng: this.state.lng } },
       (results, status) => {
         console.log("qwerty ", results, " pad");
-        console.log(status);
         if (status === "OK") {
           if (results[0]) {
             this.zoom = 12;
-            this.setState({ address: results[0].formatted_address });
+            this.setState({
+              address: results[0].formatted_address,
+            });
           } else {
             window.alert("No results found");
           }
@@ -109,6 +111,7 @@ class MapWithSearch extends Component {
   setCurrentLocation() {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition((position) => {
+        console.log(position.coords);
         this.setState({
           center: [position.coords.latitude, position.coords.longitude],
           lat: position.coords.latitude,
@@ -129,12 +132,26 @@ class MapWithSearch extends Component {
     return (
       <Wrapper>
         {mapApiLoaded && (
-          <div>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
             <AutoComplete
               map={mapInstance}
               mapApi={mapApi}
               addplace={this.addPlace}
             />
+            <BiCurrentLocation
+              onClick={() => this.setCurrentLocation()}
+              style={{
+                color: "green",
+                fontSize: 45,
+                paddingRight: 10,
+              }}
+            ></BiCurrentLocation>
           </div>
         )}
         <div style={{ height: "50vh" }}>
@@ -163,6 +180,7 @@ class MapWithSearch extends Component {
                 },
                 strictBounds: false,
               },
+              //   mapId: "b4847045d4f3260e",
               gestureHandling: "greedy",
               mapTypeControl: true,
               // mapTypeControlOptions: {

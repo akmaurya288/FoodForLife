@@ -4,12 +4,8 @@ import { Button, Card, Container } from "react-bootstrap";
 import img from "./../../assets/images/FoodForLife.png";
 import { useHistory, useLocation } from "react-router";
 
-import { isLogedIn } from "../../utilities/storage";
-import { Map } from "../../components/map";
-
 const Home = () => {
   const history = useHistory();
-  const location = useLocation();
 
   return (
     <div
@@ -17,7 +13,6 @@ const Home = () => {
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
-        // background: "#eee2dc",
         marginTop: 50,
       }}
     >
@@ -35,14 +30,7 @@ const Home = () => {
           <Card.Body>
             <Button
               variant="primary"
-              onClick={() => {
-                if (isLogedIn()) history.push({ pathname: "/bookmeal" });
-                else
-                  history.push({
-                    pathname: "/signin",
-                    state: { toPage: "/bookmeal" },
-                  });
-              }}
+              onClick={() => history.push({ pathname: "/bookmeal" })}
             >
               Order Free Meal
             </Button>

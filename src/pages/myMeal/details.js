@@ -18,17 +18,18 @@ const MyMealDetails = () => {
 
   const CardItem = ({ item }) => {
     var meal = "";
-    if (item.lunch) meal = "Lunch  - " + item.quantity;
-    if (item.dinner) meal = "Dinner  - " + item.quantity;
+    if (item.lunch) meal = "Lunch  - " + item.quantityLunch;
+    if (item.dinner) meal = "Dinner  - " + item.quantityDinner;
     if (item.lunch && item.dinner)
-      meal = "Both(Lunch & Dinner)  - " + item.quantity;
+      meal =
+        "Lunch - " + item.quantityLunch + " & Dinner - " + item.quantityDinner;
+
     const timeStampDate = item.timestamp;
     const dateInMillis = timeStampDate.seconds * 1000;
     var date =
       new Date(dateInMillis).toDateString() +
       " at " +
       new Date(dateInMillis).toLocaleTimeString();
-
     var canEdit = false;
     if (
       item.timestamp.toDate().toDateString() === new Date().toDateString() &&
@@ -304,7 +305,7 @@ const MyMealDetails = () => {
                   fontSize: "0.9rem",
                 }}
               >
-                How many persons meal requesting for?
+                Total meal
               </div>
               <div
                 style={{
@@ -313,7 +314,7 @@ const MyMealDetails = () => {
                   fontSize: "1rem",
                 }}
               >
-                {item.quantity}
+                {parseInt(item.quantityLunch) + parseInt(item.quantityDinner)}
               </div>
             </div>
           </div>

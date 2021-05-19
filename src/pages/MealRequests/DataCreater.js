@@ -25,12 +25,43 @@ const DataCreater = () => {
           quantity: 56,
           remark: "remark",
           timestamp: new firebase.firestore.Timestamp.fromDate(new Date()),
+          delivered_lunch: false,
+          delivered_dinner: false,
         })
         .then((result) => {
           setcount((prevState) => {
             return prevState + 1;
           });
           setMealAPI();
+        })
+        .catch((error) => {
+          console.log("error ", error.message);
+        });
+    }
+  };
+
+  const setDetailsAPI = async (val) => {
+    if (!stop) {
+      let date = new Date(
+        new Date().setDate(new Date().getDate() + val)
+      ).toLocaleDateString("fr-CA", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+      const db = firebase.firestore();
+      db.collection("meal_details")
+        .doc(date)
+        .set({
+          totalFamily: 0,
+          totalLunch: 0,
+          totalDinner: 0,
+        })
+        .then((result) => {
+          setcount((prevState) => {
+            return prevState + 1;
+          });
+          setDetailsAPI(++val);
         })
         .catch((error) => {
           console.log("error ", error.message);
@@ -96,10 +127,8 @@ const DataCreater = () => {
   };
 
   const deleteData = async () => {
-    const db = firebase
-      .firestore()
-      .collection("mealRequests")
-      .where("userid", "==", firebase.auth().currentUser.uid);
+    const db = firebase.firestore().collection("meal_details");
+    //   .where("userid", "==", firebase.auth().currentUser.uid);
 
     db.get().then((result) => {
       result.forEach((element) => {
@@ -110,13 +139,12 @@ const DataCreater = () => {
 
   return (
     <div>
-      <Button onClick={setMealAPI}>Start</Button>
+      <Button onClick={() => setDetailsAPI(0)}>Start</Button>
       <Button onClick={() => setstop(true)}>Stop</Button>
       <Button onClick={deleteData}>Delete</Button>
       <Button onClick={setRelationdata}>Start Relation</Button>
       <Button onClick={getRelationdata}>get Relation</Button>
       <Button onClick={deleteRelationdata}>delete Relation</Button>
-      <Button onClick={reedData}>read file</Button>
       <div style={{ color: "white" }}>{count}</div>
       <div style={{ color: "white" }}>{JSON.stringify(data)}</div>
     </div>

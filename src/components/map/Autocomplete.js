@@ -1,4 +1,5 @@
 // Autocomplete.js
+import googleMapReact from "google-map-react";
 import React, { Component } from "react";
 import styled from "styled-components";
 
@@ -8,6 +9,7 @@ const Wrapper = styled.div`
   justify-content: center;
   width: 100%;
   padding: 20px;
+  padding-right: 10px;
   text-align: center;
 `;
 
@@ -19,17 +21,22 @@ class AutoComplete extends Component {
 
   componentDidMount({ map, mapApi } = this.props) {
     const options = {
-      // restrict your search to a specific type of result
-      types: ["address"],
-      // restrict your search to a specific country, or an array of countries
-      // componentRestrictions: { country: ['gb', 'us'] },
+      strictbounds: true,
+      type: ["address"],
+      componentRestrictions: { country: "in" },
+      fields: ["geometry", "address_components"],
     };
     this.autoComplete = new mapApi.places.Autocomplete(
       this.searchInput,
       options
     );
     this.autoComplete.addListener("place_changed", this.onPlaceChanged);
-    this.autoComplete.bindTo("bounds", map);
+    this.autoComplete.setBounds({
+      north: 28.5,
+      south: 28.381183,
+      west: 76.99,
+      east: 77.1,
+    });
   }
 
   componentWillUnmount({ mapApi } = this.props) {
@@ -38,6 +45,8 @@ class AutoComplete extends Component {
 
   onPlaceChanged = ({ map, addplace } = this.props) => {
     const place = this.autoComplete.getPlace();
+
+    // console.log(place);
 
     if (!place.geometry) return;
     if (place.geometry.viewport) {
